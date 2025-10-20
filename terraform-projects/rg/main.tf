@@ -10,3 +10,4 @@ resource "azurerm_resource_group" "example" {
     Owner       = "trung"
   }
 }
+### Trigger the apply option 
