@@ -10,4 +10,3 @@ resource "azurerm_resource_group" "example" {
     Owner       = "trung"
   }
 }
-# rerun on main 
