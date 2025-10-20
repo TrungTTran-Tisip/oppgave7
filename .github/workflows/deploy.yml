@@ -1,20 +1,74 @@
+name: terraform-rg-kv
+
+on:
+  workflow_dispatch: {}  # Manual trigger for initial testing
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform-projects/rg/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'terraform-projects/rg/**'
+
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
-  deploy:
+  apply:
     runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'pull_request' && 'prod' || 'dev' }}
+    env:
+      WORKDIR: "terraform-projects/rg"  # Adjusted to match your repo structure
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Azure Login
-        uses: azure/login@v1
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.x
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Fetch Key Vault Secrets
+
+      - name: Export ARM_* for Terraform (OIDC)
         run: |
-          az keyvault secret show --name location --vault-name ${{ secrets.KEYVAULT_NAME }} --query value -o tsv >> $GITHUB_ENV
-          az keyvault secret show --name rgname --vault-name ${{ secrets.KEYVAULT_NAME }} --query value -o tsv >> $GITHUB_ENV
-      - name: Set Terraform Variables
+          {
+            echo "ARM_USE_OIDC=true"
+            echo "ARM_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}"
+            echo "ARM_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}"
+            echo "ARM_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          } >> "$GITHUB_ENV"
+
+      - name: Load vars from Key Vault → TF_VAR_*
+        env:
+          KV: ${{ secrets.KEYVAULT_NAME }}
         run: |
-          echo "TF_VAR_location=${{ env.location }}" >> $GITHUB_ENV
-          echo "TF_VAR_rgname=${{ env.rgname }}" >> $GITHUB_ENV
+          set -euo pipefail
+          RG_NAME=$(az keyvault secret show --vault-name "$KV" --name rgname --query value -o tsv)
+          LOCATION=$(az keyvault secret show --vault-name "$KV" --name location --query value -o tsv)
+          {
+            echo "TF_VAR_rg_name=$RG_NAME"
+            echo "TF_VAR_location=$LOCATION"
+          } >> "$GITHUB_ENV"
+
+      - name: Terraform Init
+        working-directory: ${{ env.WORKDIR }}
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        working-directory: ${{ env.WORKDIR }}
+        run: terraform plan -input=false
+
+      - name: Terraform Apply (only on main or approved PR)
+        if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+        working-directory: ${{ env.WORKDIR }}
+        run: terraform apply -auto-approve -input=false
