@@ -7,8 +7,10 @@ resource "azurerm_resource_group" "example" {
   location = var.location
   tags = {
     Environment = "dev"
-    Owner       = "trung"
+    Owner       = "TrungTran"
   }
 }
 # trigger apply and push main to branch
 # Final test for prod
+# Change owner tag to TrungTran for oppgave 7.4  tags = {
+    Test = "remote"
