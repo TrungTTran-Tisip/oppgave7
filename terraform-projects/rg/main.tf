@@ -12,5 +12,4 @@ resource "azurerm_resource_group" "example" {
 }
 # trigger apply and push main to branch
 # Final test for prod
-# Change owner tag to TrungTran for oppgave 7.4  tags = {
-    Test = "remote"
+# Change owner tag to TrungTran for oppgave 7.4  
