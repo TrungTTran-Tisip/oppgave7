@@ -27,8 +27,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Debug Directory
-        run: ls -la /home/runner/work/oppgave7/TrungTTran-Tisip/oppgave7/
+      - name: Debug Working Directory
+        run: |
+          echo "Current directory: $(pwd)"
+          ls -la .
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
