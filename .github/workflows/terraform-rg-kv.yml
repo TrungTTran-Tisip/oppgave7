@@ -1,7 +1,15 @@
 name: terraform-rg-kv
 
 on:
-  workflow_dispatch: {}  # manuell trigger i starten
+  workflow_dispatch: {} # Manual trigger
+  push:
+    branches:
+      - main
+      - dev
+      - test
+      - prod
+    paths:
+      - 'oppgave7/terraform-projects/rg/**'
 
 permissions:
   id-token: write
@@ -10,9 +18,11 @@ permissions:
 jobs:
   apply:
     runs-on: ubuntu-latest
-    environment: dev
+    environment: ${{ github.ref_name }} # Dynamically set based on branch
+
     env:
-      WORKDIR: "terraform-projects/rg"
+      WORKDIR: "terraform-projects/rg" # Updated to be relative to repo root
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,8 +35,8 @@ jobs:
       - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
-          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Export ARM_* for Terraform (OIDC)
@@ -52,13 +62,13 @@ jobs:
 
       - name: Terraform Init
         working-directory: ${{ env.WORKDIR }}
-        run: terraform init -input=false
+        run: terraform init -backend-config=backend.hcl -input=false
 
       - name: Terraform Plan
         working-directory: ${{ env.WORKDIR }}
         run: terraform plan -input=false
 
-      - name: Terraform Apply (only on main)
-        if: github.ref == 'refs/heads/main'
+      - name: Terraform Apply
+        if: github.ref != 'refs/heads/prod' || github.event_name == 'workflow_dispatch'
         working-directory: ${{ env.WORKDIR }}
         run: terraform apply -auto-approve -input=false
