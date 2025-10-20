@@ -2,14 +2,6 @@ name: terraform-rg-kv
 
 on:
   workflow_dispatch: {} # Manual trigger
-  push:
-    branches:
-      - main
-      - dev
-      - test
-      - prod
-    paths:
-      - 'oppgave7/terraform-projects/rg/**'
 
 permissions:
   id-token: write
@@ -18,10 +10,10 @@ permissions:
 jobs:
   apply:
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name }} # Dynamically set based on branch
+    environment: dev
 
     env:
-      WORKDIR: "terraform-projects/rg" # Updated to be relative to repo root
+      WORKDIR: "terraform-projects/rg"
 
     steps:
       - name: Checkout
@@ -62,13 +54,12 @@ jobs:
 
       - name: Terraform Init
         working-directory: ${{ env.WORKDIR }}
-        run: terraform init -backend-config=backend.hcl -input=false
+        run: terraform init -input=false
 
       - name: Terraform Plan
         working-directory: ${{ env.WORKDIR }}
         run: terraform plan -input=false
 
       - name: Terraform Apply
-        if: github.ref != 'refs/heads/prod' || github.event_name == 'workflow_dispatch'
         working-directory: ${{ env.WORKDIR }}
         run: terraform apply -auto-approve -input=false
