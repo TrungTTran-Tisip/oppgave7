@@ -12,11 +12,11 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "fd-rg" {
-  name     = "var.rg_name"
-  location = "var.location"
+  name     = var.rg_name
+  location = var.location
 }
-### Input variables ###
 
+### Input variables ###
 variable "rg_name" {
   type        = string
   description = "The name of the resource group"
